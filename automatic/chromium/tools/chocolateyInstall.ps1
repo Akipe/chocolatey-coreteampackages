@@ -1,6 +1,4 @@
-﻿$ErrorActionPreference = 'Stop'
-
-$version = '64.0.3244.0'
+$ErrorActionPreference = 'Stop'
 
 $chromium_string = "\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Chromium"
 $hive = "hkcu"
@@ -12,18 +10,17 @@ if (Test-Path $Chromium) {
   $silentArgs = '--system-level --do-not-launch-chrome'
 }
 
+
+$toolsDir = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
+
 $packageArgs = @{
   packageName   = 'chromium'
+  file          = "$toolsdir\chromium-sync_x32.exe"
+  file64        = "$toolsdir\chromium-sync_x64.exe"
   fileType      = 'exe'
-  url           = 'https://storage.googleapis.com/chromium-browser-snapshots/Win/509681/mini_installer.exe'
-  url64bit      = 'https://storage.googleapis.com/chromium-browser-snapshots/Win_x64/509678/mini_installer.exe'
   silentArgs    = $silentArgs
   validExitCodes= @(0)
   softwareName  = 'Chromium'
-  checksum      = 'd0e5cf62cc23263f1b171af222de0396'
-  checksumType  = 'md5'
-  checksum64    = 'fa756c64c8c7e355c76154738e3e78dd'
-  checksumType64= 'md5'
 }
 
-Install-ChocolateyPackage @packageArgs
+Install-ChocolateyInstallPackage @packageArgs
