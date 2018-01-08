@@ -79,14 +79,14 @@ Remember, code is written for humans, not for computers. Otherwise we'd all writ
 
 If you created custom helper functions put them all in the `helpers.ps1` to keep installer clean and understandable ([example](https://github.com/chocolatey/chocolatey-coreteampackages/tree/master/automatic/virtualbox/tools)).
 
-Use aliases sparingly. If you use them, limit their use to the default aliases which are read-only (can not be modified by the user), well known, and will be supported in the future versions of Powershell. Also ensure they are [compatible with PowerShell v2+](#1112-ensure-compatibility-with-powershell-v2).
+If you use aliases limit them to the default ones and ensure they are [compatible with PowerShell v2+](#1112-ensure-compatibility-with-powershell-v2).
 
 Chocolatey extension [chocolatey-core.extension](https://github.com/chocolatey/chocolatey-coreteampackages/tree/master/extensions/chocolatey-core.extension) provides functions that can make the code even more understandable.
 
 ### 1.1.8 Set `softwareName`
 
 If the package uses [Install-ChocolateyPackage](https://github.com/chocolatey/choco/wiki/HelpersInstallChocolateyPackage)
-`softwareName` should be set to represent software _Display Name_ correctly. You can use [myuninstaller](https://chocolatey.org/packages/myuninst) package to quickly determine it. 
+`softwareName` should be set to represent software _Display Name_ correctly. You can use [myuninstaller](https://chocolatey.org/packages/myuninst) package to quickly determine it (it's called _Entry Name_ here). 
 
 This information is used for the licensed edition of chocolatey to detect if the software is installed (Business edition) and when the software have been uninstalled (Pro edition).
 

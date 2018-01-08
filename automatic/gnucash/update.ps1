@@ -1,11 +1,11 @@
 ﻿import-module au
 import-module "$PSScriptRoot\..\..\scripts\au_extensions.psm1"
 
-$domain       = 'https://github.com'
-$releases     = "$domain/Gnucash/gnucash/releases/latest"
+$domain = 'https://sourceforge.net'
+$releases = "$domain/projects/gnucash/files/gnucash%20%28stable%29/"
 $softwareName = 'GnuCash*'
 
-function global:au_BeforeUpdate { Get-RemoteFiles -Purge -NoSuffix }
+function global:au_BeforeUpdate { Get-RemoteFiles -Purge -NoSuffix -FileNameSkip 1 }
 
 function global:au_AfterUpdate {
   Update-ChangelogVersion -version $Latest.Version
@@ -13,14 +13,14 @@ function global:au_AfterUpdate {
 
 function global:au_SearchReplace {
   @{
-    ".\legal\VERIFICATION.txt" = @{
+    ".\legal\VERIFICATION.txt"        = @{
       "(?i)(^\s*location on\:?\s*)\<.*\>" = "`${1}<$releases>"
-      "(?i)(\s*1\..+)\<.*\>" = "`${1}<$($Latest.URL32)>"
-      "(?i)(^\s*checksum\s*type\:).*" = "`${1} $($Latest.ChecksumType32)"
-      "(?i)(^\s*checksum(32)?\:).*" = "`${1} $($Latest.Checksum32)"
+      "(?i)(\s*1\..+)\<.*\>"              = "`${1}<$($Latest.URL32)>"
+      "(?i)(^\s*checksum\s*type\:).*"     = "`${1} $($Latest.ChecksumType32)"
+      "(?i)(^\s*checksum(32)?\:).*"       = "`${1} $($Latest.Checksum32)"
     }
-    ".\tools\chocolateyInstall.ps1" = @{
-      "(?i)^(\s*softwareName\s*=\s*)'.*'" = "`${1}'$softwareName'"
+    ".\tools\chocolateyInstall.ps1"   = @{
+      "(?i)^(\s*softwareName\s*=\s*)'.*'"       = "`${1}'$softwareName'"
       "(?i)(^\s*file\s*=\s*`"[$]toolsPath\\).*" = "`${1}$($Latest.FileName32)`""
     }
     ".\tools\chocolateyUninstall.ps1" = @{
@@ -29,21 +29,23 @@ function global:au_SearchReplace {
   }
 }
 function global:au_GetLatest {
+  # First let us get the folder that contains the executables
   $download_page = Invoke-WebRequest -Uri $releases -UseBasicParsing
+  $url = $download_page.Links | ? href -match "[\d\.]+\/$" | select -First 1 -expand href | % { $domain + $_ }
 
-  $re    = '^/.+\.exe$'
-  $url   = $download_page.links | ? href -match $re | select -first 1 -expand href | % { $domain + $_ }
+  # Then get the executable
 
-  $version  = $url -split '[a-z]?\/' | select -Last 1 -Skip 1
+  $download_page = Invoke-WebRequest -Uri $url -UseBasicParsing
 
-  if (!($version -match "^[\d\.]+$")) {
-    # They changed the filename again, lets try the tag name
-    $version = ($url -split '\/' | select -last 1 -skip 1)
-  }
+  $re = '\.exe\/download$'
+  $url = $download_page.links | ? href -match $re | select -first 1 -expand href | % { if ($_.StartsWith('/')) { $domain + $_ } else { $_ } }
+
+  $version = $url -split '[-]' | select -Last 1 -Skip 1
 
   @{
-    URL32 = $url
-    Version = $version
+    URL32    = $url
+    Version  = $version
+    FileType = 'exe'
   }
 }
 

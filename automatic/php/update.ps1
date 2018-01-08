@@ -17,43 +17,76 @@ function global:au_BeforeUpdate {
 }
 
 function global:au_SearchReplace {
-   @{
-        ".\tools\chocolateyInstall.ps1" = @{
-            "(?i)(^\s*packageName\s*=\s*)('.*')"                        = "`$1'$($Latest.PackageName)'"
-        }
-
-        "$($Latest.PackageName).nuspec" = @{
-            "(\<releaseNotes\>).*?(\</releaseNotes\>)" = "`${1}$($Latest.ReleaseNotes)`$2"
-        }
+  @{
+    ".\tools\chocolateyInstall.ps1" = @{
+      "(?i)(^\s*packageName\s*=\s*)('.*')" = "`$1'$($Latest.PackageName)'"
     }
+
+    "$($Latest.PackageName).nuspec" = @{
+      "(\<releaseNotes\>).*?(\</releaseNotes\>)"                   = "`${1}$($Latest.ReleaseNotes)`$2"
+      "(\<dependency .+?`")vcredist[^`"]+`"( version=`"[^`"]+`")?" = "`$1$($Latest.Dependency.Id)`" version=`"$($Latest.Dependency.Version)`""
+    }
+  }
+}
+
+function Get-Dependency() {
+  param($url)
+
+  $dep = $url -split '\-' | select -last 1 -skip 1
+
+  $result = @{
+    'vc15' = @{ Id = 'vcredist140'; Version = '14.11.25325.0' }
+    'vc14' = @{ Id = 'vcredist140'; Version = '14.0.24215.1' }
+    'vc11' = @{ Id = 'vcredist2012'; Version = '11.0.61031' }
+  }.GetEnumerator() | ? Key -eq $dep | select -first 1 -expand Value
+
+  if (!$result) {
+    throw "VC Redistributable version was not found. Please check the script."
+  }
+  return $result
+}
+
+function CreateStream {
+  param([uri]$url32Bit, [uri]$url64bit, [version]$version)
+
+  $Result = @{
+    Version      = $version
+    URLNTS32     = 'http://windows.php.net' + $url32bit
+    URLNTS64     = 'http://windows.php.net' + $url64bit
+    URLTS32      = 'http://windows.php.net' + ($url32bit | % { $_ -replace '\-nts', '' })
+    URLTS64      = 'http://windows.php.net' + ($url64bit | % { $_ -replace '\-nts', '' })
+    ReleaseNotes = "https://secure.php.net/ChangeLog-$($version.Major).php#${version}"
+    Dependency   = Get-Dependency $url32Bit
+  }
+
+  if ($Result.URLNTS32 -eq $Result.TS32) {
+    throw "The threadsafe and non-threadsafe 32bit url is equal... This is not expected"
+  }
+
+  if ($Result.URLNTS64 -eq $Result.TS64) {
+    throw "The threadsafe and non-threadsafe 64bit url is equal... This is not expected"
+  }
+
+  return $Result
 }
 
 function global:au_GetLatest {
-    $download_page = Invoke-WebRequest -Uri $releases
+  $download_page = Invoke-WebRequest -Uri $releases -UseBasicParsing
 
-    $re      = 'php-\d.+-nts.+\.zip$'
-    $url     = $download_page.links | ? href -match $re  | % href | select -First 2
-    $urlTS   = $url | % { $_ -replace '\-nts','' }
-    $version = $url[0] -split '-' | select -Index 1
-    $majorVersion = $version -split '\.' | select -first 1
-    $Result = @{
-        Version      = $version
-        URLNTS32     = "http://windows.php.net/" + ($url -match 'x86' | select -First 1)
-        URLNTS64     = "http://windows.php.net/" + ($url -match 'x64' | select -First 1)
-        URLTS32      = "http://windows.php.net/" + ($urlTS -match 'x86' | select -First 1)
-        URLTS64      = "http://windows.php.net/" + ($urlTS -match 'x64' | select -First 1)
-        ReleaseNotes = "https://secure.php.net/ChangeLog-${majorVersion}.php#${version}"
-    }
+  $url32Bits = $download_page.links | ? href -match 'nts.*x86\.zip$' | ? href -notmatch 'debug' | select -expand href
+  $url64Bits = $download_page.links | ? href -match 'nts.*x64\.zip$' | ? href -notmatch 'debug' | select -expand href
 
-    if ($Result.URLNTS32 -eq $Result.TS32) {
-      throw "The threadsafe and non-threadsafe 32bit url is equal... This is not expected"
-    }
+  $streams = @{ }
 
-    if ($Result.URLNTS64 -eq $Result.TS64) {
-      throw "The threadsafe and non-threadsafe 64bit url is equal... This is not expected"
-    }
+  $url32Bits | sort | % {
+    $version = $_ -split '-' | select -first 1 -Skip 1
+    $url64Bit = $url64Bits | ? { $_ -split '-' | select -first 1 -skip 1 | ? { $_ -eq $version } }
 
-    $Result
+    $streams.Add((Get-Version $version).ToString(2), (CreateStream $_ $url64Bit $version))
+
+  } | Out-Null
+
+  return @{ Streams = $streams }
 }
 
 update -ChecksumFor none

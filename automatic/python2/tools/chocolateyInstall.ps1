@@ -12,17 +12,13 @@ $params = @{
   packageName    = 'python2'
   fileType       = 'msi'
   silentArgs     = $installArgs
-  url            = 'https://www.python.org/ftp/python/2.7.14/python-2.7.14.msi'
-  url64Bit       = 'https://www.python.org/ftp/python/2.7.14/python-2.7.14.amd64.msi'
-  checksum       = '450bde0540341d4f7a6ad2bb66639fd3fac1c53087e9844dc34ddf88057a17ca'
-  checksum64     = 'af293df7728b861648162ba0cd4a067299385cb6a3f172569205ac0b33190693'
+  url            = 'https://www.python.org/ftp/python/2.6.6/python-2.6.6.msi'
+  url64Bit       = 'https://www.python.org/ftp/python/2.6.6/python-2.6.6.amd64.msi'
+  checksum       = '1192931440475d07fb3e9724531a53de34097ad24e519bff2e5f458c375a31b3'
+  checksum64     = 'b9ea8892ce58101957a0bb2caa02ccf5496b13a1cc9e24de078d4451b4ef3cf8'
   checksumType   = 'sha256'
   checksumType64 = 'sha256'
 }
-
-# If the package is only intended for the 32-bit version, only pass
-# the 32-bit version to the install package function.
-if ($packageName -match 32) {  'url64Bit', 'checksum64' | % $params.Remove($_) }
 
 Install-ChocolateyPackage @params
 Write-Host "Installed to '$installDir'"
